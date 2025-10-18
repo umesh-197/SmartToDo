@@ -1,4 +1,4 @@
-// Get elements
+// Elements
 const authContainer = document.getElementById("auth-container");
 const todoContainer = document.getElementById("todo-container");
 const emailInput = document.getElementById("email");
@@ -12,29 +12,35 @@ const addTaskBtn = document.getElementById("add-task-btn");
 const taskList = document.getElementById("task-list");
 
 // Sign up
-signupBtn.addEventListener("click", () => {
-    auth.createUserWithEmailAndPassword(emailInput.value, passwordInput.value)
-    .then(() => alert("Signup successful!"))
-    .catch(err => alert(err.message));
+signupBtn.addEventListener("click", async () => {
+    try {
+        await createUserWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+        alert("Signup successful!");
+    } catch (err) {
+        alert(err.message);
+    }
 });
 
 // Login
-loginBtn.addEventListener("click", () => {
-    auth.signInWithEmailAndPassword(emailInput.value, passwordInput.value)
-    .catch(err => alert(err.message));
+loginBtn.addEventListener("click", async () => {
+    try {
+        await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+    } catch (err) {
+        alert(err.message);
+    }
 });
 
 // Logout
-logoutBtn.addEventListener("click", () => {
-    auth.signOut();
+logoutBtn.addEventListener("click", async () => {
+    await signOut(auth);
 });
 
 // Auth state
-auth.onAuthStateChanged(user => {
+onAuthStateChanged(auth, user => {
     if(user){
         authContainer.style.display = "none";
         todoContainer.style.display = "block";
-        loadTasks();
+        loadTasks(user.uid);
     } else {
         authContainer.style.display = "block";
         todoContainer.style.display = "none";
@@ -42,39 +48,40 @@ auth.onAuthStateChanged(user => {
 });
 
 // Add task
-addTaskBtn.addEventListener("click", () => {
+addTaskBtn.addEventListener("click", async () => {
     if(taskInput.value === "") return;
-    db.collection("tasks").add({
+    await addDoc(collection(db, "tasks"), {
         uid: auth.currentUser.uid,
         task: taskInput.value,
         deadline: taskDeadline.value,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        createdAt: serverTimestamp()
     });
     taskInput.value = "";
     taskDeadline.value = "";
 });
 
 // Load tasks
-function loadTasks(){
-    db.collection("tasks")
-      .where("uid", "==", auth.currentUser.uid)
-      .orderBy("createdAt", "desc")
-      .onSnapshot(snapshot => {
-          taskList.innerHTML = "";
-          snapshot.forEach(doc => {
-              const li = document.createElement("li");
-              const data = doc.data();
-              li.textContent = `${data.task} (Deadline: ${data.deadline})`;
-              taskList.appendChild(li);
+function loadTasks(uid){
+    const q = query(collection(db, "tasks"), where("uid", "==", uid), orderBy("createdAt", "desc"));
+    onSnapshot(q, snapshot => {
+        taskList.innerHTML = "";
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const li = document.createElement("li");
+            li.textContent = `${data.task} (Deadline: ${data.deadline})`;
+            taskList.appendChild(li);
 
-              // Reminder notification
-              if(data.deadline){
-                  const deadlineDate = new Date(data.deadline);
-                  const now = new Date();
-                  if(deadlineDate - now <= 0){
-                      new Notification("Task Deadline Passed!", { body: data.task });
-                  }
-              }
-          });
-      });
+            // Reminder notification
+            if(data.deadline){
+                const deadlineDate = new Date(data.deadline);
+                const now = new Date();
+                if(deadlineDate - now <= 0 && Notification.permission === "granted"){
+                    new Notification("Task Deadline Passed!", { body: data.task });
+                }
+            }
+        });
+    });
 }
+
+// Ask permission for notifications
+if(Notification.permission !== "granted") Notification.requestPermission();
