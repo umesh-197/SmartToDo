@@ -1,33 +1,33 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart To-Do List</title>
-<link rel="stylesheet" href="style.css">
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Smart To-Do</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<div id="auth-container">
-    <h1>Smart To-Do List</h1>
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Password">
-    <button id="signup-btn">Sign Up</button>
-    <button id="login-btn">Login</button>
-</div>
+  <div id="auth-container">
+    <h1>Smart To-Do</h1>
+    <input id="email" type="email" placeholder="Email" />
+    <input id="password" type="password" placeholder="Password (min 6)" />
+    <div>
+      <button id="signup-btn">Sign Up</button>
+      <button id="login-btn">Login</button>
+    </div>
+    <div id="auth-msg"></div>
+  </div>
 
-<div id="todo-container" style="display:none;">
+  <div id="todo-container" style="display:none;">
     <h2>Your Tasks</h2>
-    <input type="text" id="task-input" placeholder="New task">
-    <input type="date" id="task-deadline">
+    <input id="task-input" placeholder="New task" />
+    <input id="task-deadline" type="date" />
     <button id="add-task-btn">Add Task</button>
     <ul id="task-list"></ul>
     <button id="logout-btn">Logout</button>
-</div>
+  </div>
 
-<script src="script.js"></script>
+  <!-- main JS as a module -->
+  <script type="module" src="script.js"></script>
 </body>
 </html>
