@@ -5,7 +5,7 @@ import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 import {
-  getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc, getDocs
+  getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-functions.js";
 
@@ -91,75 +91,97 @@ addTaskBtn.addEventListener("click", async () => {
       createdAt: serverTimestamp(),
       reminderSent: false
     });
+
+    // Show task immediately in UI
+    appendTaskToUI({
+      id: docRef.id,
+      task: title,
+      description: desc,
+      deadline: date
+    });
+
     taskInput.value = "";
     taskDesc.value = "";
     taskDeadline.value = "";
 
-    // --- Trigger immediate email reminder ---
+    // Trigger immediate email reminder
     const sendImmediateReminder = httpsCallable(functions, 'sendImmediateReminder');
     sendImmediateReminder({ taskId: docRef.id }).catch(console.error);
   } catch (err) { alert("Add task error: " + err.message); }
 });
 
+// --- Append a task to UI ---
+function appendTaskToUI(d) {
+  const li = document.createElement("li");
+  li.className = "task-item";
+  li.innerHTML = `
+    <div>
+      <strong>${d.task}</strong> (Deadline: ${d.deadline})<br>
+      <em>${d.description ? d.description : "No description"}</em>
+    </div>
+    <div class="btn-group">
+      <button class="edit-btn">Edit</button>
+      <button class="delete-btn">Delete</button>
+    </div>
+  `;
+
+  // DELETE TASK
+  li.querySelector(".delete-btn").addEventListener("click", async () => {
+    if (confirm("Delete this task?")) {
+      await deleteDoc(doc(db, "tasks", d.id));
+      li.remove();
+    }
+  });
+
+  // EDIT TASK
+  li.querySelector(".edit-btn").addEventListener("click", async () => {
+    const newTitle = prompt("Update task title:", d.task);
+    const newDesc = prompt("Update description:", d.description);
+    const newDate = prompt("Update deadline (YYYY-MM-DD):", d.deadline);
+
+    if (newTitle && newDate) {
+      await updateDoc(doc(db, "tasks", d.id), {
+        task: newTitle,
+        description: newDesc,
+        deadline: newDate,
+        reminderSent: false,
+        updatedAt: serverTimestamp()
+      });
+
+      // Update UI immediately
+      li.querySelector("strong").textContent = newTitle;
+      li.querySelector("em").textContent = newDesc || "No description";
+      li.querySelector("div").innerHTML = `<strong>${newTitle}</strong> (Deadline: ${newDate})<br><em>${newDesc || "No description"}</em>`;
+
+      // Trigger immediate reminder
+      const sendImmediateReminder = httpsCallable(functions, 'sendImmediateReminder');
+      sendImmediateReminder({ taskId: d.id }).catch(console.error);
+    }
+  });
+
+  taskList.prepend(li);
+
+  // Browser notification
+  if (d.deadline) {
+    const deadlineDate = new Date(d.deadline + "T00:00:00");
+    const now = new Date();
+    const diff = (deadlineDate - now)/(1000*60*60*24);
+    if (diff <= 1 && diff >= 0 && Notification.permission === "granted") {
+      new Notification("Reminder: " + d.task, { body: `Due ${d.deadline}` });
+    }
+  }
+}
+
 // --- Load Tasks (real-time) ---
 function loadTasks(uid) {
   taskList.innerHTML = "";
   const q = query(collection(db, "tasks"), where("uid", "==", uid), orderBy("createdAt", "desc"));
-  onSnapshot(q, async (snapshot) => {
+  onSnapshot(q, (snapshot) => {
     taskList.innerHTML = "";
     snapshot.forEach(docSnap => {
       const d = docSnap.data();
       d.id = docSnap.id;
-      const li = document.createElement("li");
-      li.className = "task-item";
-      li.innerHTML = `
-        <div>
-          <strong>${d.task}</strong> (Deadline: ${d.deadline})<br>
-          <em>${d.description ? d.description : "No description"}</em>
-        </div>
-        <div class="btn-group">
-          <button class="edit-btn">Edit</button>
-          <button class="delete-btn">Delete</button>
-        </div>
-      `;
-
-      // DELETE TASK
-      li.querySelector(".delete-btn").addEventListener("click", async () => {
-        if (confirm("Delete this task?")) await deleteDoc(doc(db, "tasks", d.id));
-      });
-
-      // EDIT TASK
-      li.querySelector(".edit-btn").addEventListener("click", async () => {
-        const newTitle = prompt("Update task title:", d.task);
-        const newDesc = prompt("Update description:", d.description);
-        const newDate = prompt("Update deadline (YYYY-MM-DD):", d.deadline);
-
-        if (newTitle && newDate) {
-          await updateDoc(doc(db, "tasks", d.id), {
-            task: newTitle,
-            description: newDesc,
-            deadline: newDate,
-            reminderSent: false,
-            updatedAt: serverTimestamp()
-          });
-
-          // Trigger immediate reminder
-          const sendImmediateReminder = httpsCallable(functions, 'sendImmediateReminder');
-          sendImmediateReminder({ taskId: d.id }).catch(console.error);
-        }
-      });
-
-      taskList.appendChild(li);
-
-      // Browser notification
-      if (d.deadline) {
-        const deadlineDate = new Date(d.deadline + "T00:00:00");
-        const now = new Date();
-        const diff = (deadlineDate - now)/(1000*60*60*24);
-        if (diff <= 1 && diff >= 0 && Notification.permission === "granted") {
-          new Notification("Reminder: " + d.task, { body: `Due ${d.deadline}` });
-        }
-      }
+      appendTaskToUI(d);
     });
   });
 }
