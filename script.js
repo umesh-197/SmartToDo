@@ -42,25 +42,51 @@ const addTaskBtn = document.getElementById("add-task-btn");
 const taskList = document.getElementById("task-list");
 const authMsg = document.getElementById("auth-msg");
 
-// --- Auth ---
+// --- Email validation ---
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+// --- Signup ---
 signupBtn.addEventListener("click", async () => {
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+
+  if (!isValidEmail(email)) return authMsg.textContent = "Invalid email format!";
+  if (password.length < 6) return authMsg.textContent = "Password must be at least 6 characters";
+
   try {
     authMsg.textContent = "Signing up...";
-    await createUserWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+    await createUserWithEmailAndPassword(auth, email, password);
     authMsg.textContent = "";
-  } catch (err) { authMsg.textContent = "Sign up error: " + err.message; }
+  } catch (err) { 
+    authMsg.textContent = "Sign up error: " + err.message; 
+  }
 });
 
+// --- Login ---
 loginBtn.addEventListener("click", async () => {
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+
+  if (!isValidEmail(email)) return authMsg.textContent = "Invalid email format!";
+  if (!password) return authMsg.textContent = "Password cannot be empty";
+
   try {
     authMsg.textContent = "Signing in...";
-    await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+    await signInWithEmailAndPassword(auth, email, password);
     authMsg.textContent = "";
-  } catch (err) { authMsg.textContent = "Sign in error: " + err.message; }
+  } catch (err) { 
+    authMsg.textContent = "Sign in error: " + err.message; 
+  }
 });
 
-logoutBtn.addEventListener("click", async () => { await signOut(auth); });
+// --- Logout ---
+logoutBtn.addEventListener("click", async () => { 
+  await signOut(auth); 
+});
 
+// --- Auth state listener ---
 onAuthStateChanged(auth, (user) => {
   if (user) {
     authContainer.style.display = "none";
@@ -92,7 +118,7 @@ addTaskBtn.addEventListener("click", async () => {
       reminderSent: false
     });
 
-    // Show task immediately in UI
+    // Show task immediately
     appendTaskToUI({
       id: docRef.id,
       task: title,
@@ -110,14 +136,14 @@ addTaskBtn.addEventListener("click", async () => {
   } catch (err) { alert("Add task error: " + err.message); }
 });
 
-// --- Append a task to UI ---
+// --- Append task to UI ---
 function appendTaskToUI(d) {
   const li = document.createElement("li");
   li.className = "task-item";
   li.innerHTML = `
     <div>
       <strong>${d.task}</strong> (Deadline: ${d.deadline})<br>
-      <em>${d.description ? d.description : "No description"}</em>
+      <em>${d.description || "No description"}</em>
     </div>
     <div class="btn-group">
       <button class="edit-btn">Edit</button>
@@ -148,7 +174,6 @@ function appendTaskToUI(d) {
         updatedAt: serverTimestamp()
       });
 
-      // Update UI immediately
       li.querySelector("strong").textContent = newTitle;
       li.querySelector("em").textContent = newDesc || "No description";
       li.querySelector("div").innerHTML = `<strong>${newTitle}</strong> (Deadline: ${newDate})<br><em>${newDesc || "No description"}</em>`;
