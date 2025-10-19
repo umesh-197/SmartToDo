@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Smart To-Do</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -11,7 +11,7 @@
     <h1>Smart To-Do</h1>
     <input id="email" type="email" placeholder="Email" />
     <input id="password" type="password" placeholder="Password (min 6)" />
-    <div>
+    <div class="auth-buttons">
       <button id="signup-btn">Sign Up</button>
       <button id="login-btn">Login</button>
     </div>
@@ -20,15 +20,17 @@
 
   <div id="todo-container" style="display:none;">
     <h2>Your Tasks</h2>
-    <input id="task-input" placeholder="Task title" />
-    <textarea id="task-desc" placeholder="Task description (optional)"></textarea>
-    <input id="task-deadline" type="date" />
-    <button id="add-task-btn">Add Task</button>
+    <div class="task-inputs">
+      <input id="task-input" placeholder="Task title" />
+      <textarea id="task-desc" placeholder="Task description (optional)"></textarea>
+      <input id="task-deadline" type="date" />
+      <button id="add-task-btn">Add Task</button>
+    </div>
     <ul id="task-list"></ul>
-    <button id="logout-btn">Logout</button>
+    <button id="logout-btn" class="logout-btn">Logout</button>
   </div>
 
-  <!-- Main JS -->
+  <!-- main JS as a module -->
   <script type="module" src="script.js"></script>
 </body>
 </html>
