@@ -136,19 +136,21 @@ function displayTask(d) {
   });
 
   li.querySelector(".edit-btn").addEventListener("click", async () => {
-    const newTitle = prompt("Update task title:", d.task);
-    const newDesc = prompt("Update description:", d.description);
-    const newDate = prompt("Update deadline (YYYY-MM-DD):", d.deadline);
-    if (newTitle && newDate) {
-      await updateDoc(doc(db, "tasks", d.id), {
-        task: newTitle,
-        description: newDesc,
-        deadline: newDate,
-        reminderSent: false,
-        updatedAt: serverTimestamp()
-      });
-    }
-  });
+  const newTitle = prompt("Update task title:", d.task);
+  const newDesc = prompt("Update description:", d.description);
+  const newDate = prompt("Update deadline (YYYY-MM-DD):", d.deadline);
+
+  if (newTitle && newDate) {
+    // Update the task in Firestore
+    await updateDoc(doc(db, "tasks", d.id), {
+      task: newTitle,
+      description: newDesc,
+      deadline: newDate,
+      reminderSent: false, // reset email reminder flag
+      updatedAt: serverTimestamp()
+    });
+  }
+});
 
   taskList.prepend(li);
 }
@@ -195,3 +197,4 @@ function startReminderChecker() {
 if (Notification.permission !== "granted") {
   Notification.requestPermission().then(() => startReminderChecker());
 }
+
