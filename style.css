@@ -1,4 +1,3 @@
-/* General */
 body {
   font-family: Arial, sans-serif;
   background: #f0f4f7;
@@ -10,9 +9,7 @@ body {
   min-height: 100vh;
 }
 
-h1, h2 {
-  text-align: center;
-}
+h1, h2 { text-align: center; }
 
 #auth-container, #todo-container {
   background: #fff;
@@ -32,9 +29,7 @@ input, textarea {
   border-radius: 5px;
 }
 
-textarea {
-  resize: vertical;
-}
+textarea { resize: vertical; }
 
 button {
   padding: 10px 15px;
@@ -47,34 +42,16 @@ button {
   transition: background 0.3s;
 }
 
-button:hover {
-  background: #0056b3;
-}
+button:hover { background: #0056b3; }
 
-.auth-buttons {
-  display: flex;
-  justify-content: space-between;
-}
+.auth-buttons { display: flex; justify-content: space-between; }
 
-.logout-btn {
-  width: 100%;
-  margin-top: 15px;
-  background: #dc3545;
-}
+.logout-btn { width: 100%; margin-top: 15px; background: #dc3545; }
+.logout-btn:hover { background: #a71d2a; }
 
-.logout-btn:hover {
-  background: #a71d2a;
-}
+.task-inputs { display: flex; flex-direction: column; }
 
-.task-inputs {
-  display: flex;
-  flex-direction: column;
-}
-
-ul#task-list {
-  list-style: none;
-  padding: 0;
-}
+ul#task-list { list-style: none; padding: 0; }
 
 .task-item {
   background: #e9f0ff;
@@ -93,22 +70,8 @@ ul#task-list {
   background: #ffe6e6;
 }
 
-.task-item .btn-group {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
+.task-item .btn-group { display: flex; flex-direction: column; gap: 5px; }
 
-.task-item button {
-  background: #28a745;
-  padding: 5px 10px;
-  font-size: 12px;
-}
-
-.task-item button.delete-btn {
-  background: #dc3545;
-}
-
-.task-item button:hover {
-  opacity: 0.85;
-}
+.task-item button { background: #28a745; padding: 5px 10px; font-size: 12px; }
+.task-item button.delete-btn { background: #dc3545; }
+.task-item button:hover { opacity: 0.85; }
