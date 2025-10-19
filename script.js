@@ -1,4 +1,3 @@
-// --- Firebase modular imports ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import {
   getAuth,
@@ -32,7 +31,6 @@ const firebaseConfig = {
   measurementId: "G-10Z45CV842"
 };
 
-// Init Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -52,32 +50,24 @@ const addTaskBtn = document.getElementById("add-task-btn");
 const taskList = document.getElementById("task-list");
 const authMsg = document.getElementById("auth-msg");
 
-// --- Signup ---
+// --- Signup/Login ---
 signupBtn.addEventListener("click", async () => {
   try {
     authMsg.textContent = "Signing up...";
     await createUserWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
     authMsg.textContent = "Account created!";
-  } catch (err) {
-    authMsg.textContent = "Sign up error: " + err.message;
-  }
+  } catch (err) { authMsg.textContent = "Sign up error: " + err.message; }
 });
 
-// --- Login ---
 loginBtn.addEventListener("click", async () => {
   try {
     authMsg.textContent = "Signing in...";
     await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
     authMsg.textContent = "";
-  } catch (err) {
-    authMsg.textContent = "Sign in error: " + err.message;
-  }
+  } catch (err) { authMsg.textContent = "Sign in error: " + err.message; }
 });
 
-// --- Logout ---
-logoutBtn.addEventListener("click", async () => {
-  await signOut(auth);
-});
+logoutBtn.addEventListener("click", async () => { await signOut(auth); });
 
 // --- Auth State ---
 onAuthStateChanged(auth, (user) => {
@@ -110,13 +100,12 @@ addTaskBtn.addEventListener("click", async () => {
       task: title,
       description: desc,
       deadline: date,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      reminderSent: false
     });
     const tempItem = document.getElementById(tempId);
     if (tempItem) tempItem.id = docRef.id;
-  } catch (err) {
-    alert("Add task error: " + err.message);
-  }
+  } catch (err) { alert("Add task error: " + err.message); }
 
   taskInput.value = "";
   taskDesc.value = "";
@@ -139,7 +128,6 @@ function displayTask(d) {
     </div>
   `;
 
-  // Delete
   li.querySelector(".delete-btn").addEventListener("click", async () => {
     if (confirm("Delete this task?")) {
       if (d.id.startsWith("temp-")) li.remove();
@@ -147,7 +135,6 @@ function displayTask(d) {
     }
   });
 
-  // Edit
   li.querySelector(".edit-btn").addEventListener("click", async () => {
     const newTitle = prompt("Update task title:", d.task);
     const newDesc = prompt("Update description:", d.description);
@@ -157,6 +144,7 @@ function displayTask(d) {
         task: newTitle,
         description: newDesc,
         deadline: newDate,
+        reminderSent: false,
         updatedAt: serverTimestamp()
       });
     }
@@ -178,7 +166,7 @@ function loadTasks(uid) {
   });
 }
 
-// --- Real-time Reminders ---
+// --- In-browser Reminder Checker ---
 function startReminderChecker() {
   setInterval(() => {
     if (!auth.currentUser) return;
@@ -193,7 +181,7 @@ function startReminderChecker() {
 
       if (diffHours <= 24 && diffHours > 0) {
         if (!li.dataset.notified) {
-          li.classList.add("reminder"); // Visual highlight
+          li.classList.add("reminder");
           if (Notification.permission === "granted") {
             new Notification("Reminder: " + title, { body: `Due ${deadlineMatch[0]}` });
           }
