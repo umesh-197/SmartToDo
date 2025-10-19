@@ -33,11 +33,9 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-console.log("Initializing Firebase...");
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-console.log("Firebase initialized successfully!");
 
 // --- UI elements ---
 const authContainer = document.getElementById("auth-container");
@@ -61,7 +59,6 @@ signupBtn.addEventListener("click", async () => {
     await createUserWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
     authMsg.textContent = "Account created successfully!";
   } catch (err) {
-    console.error("Signup error:", err);
     authMsg.textContent = "Sign up error: " + err.message;
   }
 });
@@ -73,7 +70,6 @@ loginBtn.addEventListener("click", async () => {
     await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
     authMsg.textContent = "";
   } catch (err) {
-    console.error("Login error:", err);
     authMsg.textContent = "Sign in error: " + err.message;
   }
 });
@@ -89,6 +85,7 @@ onAuthStateChanged(auth, (user) => {
     authContainer.style.display = "none";
     todoContainer.style.display = "block";
     loadTasks(user.uid);
+    startReminderChecker();
   } else {
     authContainer.style.display = "block";
     todoContainer.style.display = "none";
@@ -105,7 +102,7 @@ addTaskBtn.addEventListener("click", async () => {
   if (!title || !date) return alert("Please enter task title and deadline");
   if (!auth.currentUser) return alert("Not signed in");
 
-  // Instant display before Firestore confirms
+  // Instant display
   const tempId = "temp-" + Date.now();
   displayTask({
     id: tempId,
@@ -123,11 +120,10 @@ addTaskBtn.addEventListener("click", async () => {
       createdAt: serverTimestamp()
     });
 
-    // Replace temp item with actual (Firestore) item
+    // Replace temp ID with real Firestore ID
     const tempItem = document.getElementById(tempId);
     if (tempItem) tempItem.id = docRef.id;
   } catch (err) {
-    console.error("Add task error:", err);
     alert("Add task error: " + err.message);
   }
 
@@ -175,7 +171,7 @@ function displayTask(d) {
     }
   });
 
-  taskList.prepend(li); // Show instantly at top
+  taskList.prepend(li); // show at top immediately
 }
 
 // ---- Load Tasks (real-time sync) ----
@@ -191,4 +187,36 @@ function loadTasks(uid) {
   }, (err) => {
     console.error("Error loading tasks:", err);
   });
+}
+
+// ---- Real-time Reminders ----
+function startReminderChecker() {
+  setInterval(() => {
+    if (!auth.currentUser) return;
+    const now = new Date();
+    const taskItems = document.querySelectorAll(".task-item");
+
+    taskItems.forEach(li => {
+      const title = li.querySelector("strong").textContent;
+      const deadlineText = li.querySelector("strong").nextSibling.textContent;
+      const deadlineMatch = deadlineText.match(/\d{4}-\d{2}-\d{2}/);
+      if (!deadlineMatch) return;
+      const deadlineDate = new Date(deadlineMatch[0] + "T00:00:00");
+      const diffHours = (deadlineDate - now) / (1000 * 60 * 60);
+
+      if (diffHours <= 24 && diffHours > 0) {
+        if (!li.dataset.notified) {
+          if (Notification.permission === "granted") {
+            new Notification("Reminder: " + title, { body: `Due ${deadlineMatch[0]}` });
+          }
+          li.dataset.notified = "true";
+        }
+      }
+    });
+  }, 60 * 1000);
+}
+
+// Request notification permission at the start
+if (Notification.permission !== "granted") {
+  Notification.requestPermission().then(() => startReminderChecker());
 }
