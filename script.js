@@ -48,6 +48,7 @@ const logoutBtn = document.getElementById("logout-btn");
 const taskInput = document.getElementById("task-input");
 const taskDeadline = document.getElementById("task-deadline");
 const addTaskBtn = document.getElementById("add-task-btn");
+const taskDesc = document.getElementById("task-desc");
 const taskList = document.getElementById("task-list");
 const authMsg = document.getElementById("auth-msg");
 
@@ -97,18 +98,21 @@ onAuthStateChanged(auth, (user) => {
 // ---- Add Task ----
 addTaskBtn.addEventListener("click", async () => {
   const title = taskInput.value.trim();
+  const desc = taskDesc.value.trim();
   const date = taskDeadline.value;
-  if (!title || !date) return alert("Title and date required");
+if (!title || !date) return alert("Title and date required");
   if (!auth.currentUser) return alert("Not signed in");
   try {
     await addDoc(collection(db, "tasks"), {
       uid: auth.currentUser.uid,
       task: title,
+      deadline:date,
       deadline: date,
       createdAt: serverTimestamp()
     });
     taskInput.value = "";
     taskDeadline.value = "";
+    taskDeadline.value="";
   } catch (err) {
     alert("Add task error: " + err.message);
   }
@@ -123,7 +127,9 @@ function loadTasks(uid) {
     snapshot.forEach(docSnap => {
       const d = docSnap.data();
       const li = document.createElement("li");
-      li.textContent = `${d.task} (Deadline: ${d.deadline})`;
+      li.innerHTML = `
+  <strong>${d.task}</strong> (Deadline: ${d.deadline})<br>
+  <em>${d.description ? d.description : "No description"}</em>`;
       taskList.appendChild(li);
 
       // optional foreground reminder
@@ -145,3 +151,4 @@ function loadTasks(uid) {
     console.error("onSnapshot error", err);
   });
 }
+
