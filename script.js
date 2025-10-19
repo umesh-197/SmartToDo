@@ -111,7 +111,7 @@ if (!title || !date) return alert("Title and date required");
       createdAt: serverTimestamp()
     });
     taskInput.value = "";
-    taskDeadline.value = "";
+    taskDesc.value = "";
     taskDeadline.value="";
   } catch (err) {
     alert("Add task error: " + err.message);
@@ -127,10 +127,59 @@ function loadTasks(uid) {
     snapshot.forEach(docSnap => {
       const d = docSnap.data();
       const li = document.createElement("li");
-      li.innerHTML = `
-  <strong>${d.task}</strong> (Deadline: ${d.deadline})<br>
-  <em>${d.description ? d.description : "No description"}</em>`;
-      taskList.appendChild(li);
+      import { getDocs, collection, query, where, deleteDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore";
+
+async function loadTasks() {
+  const taskList = document.getElementById("task-list");
+  taskList.innerHTML = "";
+
+  const q = query(collection(db, "tasks"), where("uid", "==", auth.currentUser.uid));
+  const querySnapshot = await getDocs(q);
+
+  querySnapshot.forEach((docSnap) => {
+    const d = docSnap.data();
+    const li = document.createElement("li");
+    li.className = "task-item";
+    li.innerHTML = `
+      <div>
+        <strong>${d.task}</strong> (Deadline: ${d.deadline})<br>
+        <em>${d.description ? d.description : "No description"}</em>
+      </div>
+      <div class="btn-group">
+        <button class="edit-btn">Edit</button>
+        <button class="delete-btn">Delete</button>
+      </div>
+    `;
+
+    // DELETE TASK
+    li.querySelector(".delete-btn").addEventListener("click", async () => {
+      if (confirm("Delete this task?")) {
+        await deleteDoc(doc(db, "tasks", docSnap.id));
+        loadTasks();
+      }
+    });
+
+    // EDIT TASK
+    li.querySelector(".edit-btn").addEventListener("click", async () => {
+      const newTitle = prompt("Update task title:", d.task);
+      const newDesc = prompt("Update description:", d.description);
+      const newDate = prompt("Update deadline (YYYY-MM-DD):", d.deadline);
+
+      if (newTitle && newDate) {
+        await updateDoc(doc(db, "tasks", docSnap.id), {
+          task: newTitle,
+          description: newDesc,
+          deadline: newDate,
+          updatedAt: serverTimestamp()
+        });
+        loadTasks();
+      }
+    });
+
+    taskList.appendChild(li);
+  });
+}
+
 
       // optional foreground reminder
       if (d.deadline) {
@@ -151,4 +200,5 @@ function loadTasks(uid) {
     console.error("onSnapshot error", err);
   });
 }
+
 
