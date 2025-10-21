@@ -2,10 +2,25 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics.js";
 import {
-  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  sendEmailVerification
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 import {
-  getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc
+  getFirestore,
+  collection,
+  addDoc,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  serverTimestamp,
+  doc,
+  updateDoc,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-functions.js";
 
@@ -42,56 +57,76 @@ const addTaskBtn = document.getElementById("add-task-btn");
 const taskList = document.getElementById("task-list");
 const authMsg = document.getElementById("auth-msg");
 
-// --- Email validation ---
+// --- Email validation helper ---
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-// --- Signup ---
+// --- SIGN UP with email verification ---
 signupBtn.addEventListener("click", async () => {
-  const email = emailInput.value.trim();
-  const password = passwordInput.value;
-
-  if (!isValidEmail(email)) return authMsg.textContent = "Invalid email format!";
-  if (password.length < 6) return authMsg.textContent = "Password must be at least 6 characters";
-
   try {
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    if (!isValidEmail(email)) {
+      authMsg.textContent = "❌ Please enter a valid email address.";
+      return;
+    }
+    if (password.length < 6) {
+      authMsg.textContent = "⚠️ Password must be at least 6 characters.";
+      return;
+    }
+
     authMsg.textContent = "Signing up...";
-    await createUserWithEmailAndPassword(auth, email, password);
-    authMsg.textContent = "";
-  } catch (err) { 
-    authMsg.textContent = "Sign up error: " + err.message; 
+    const userCred = await createUserWithEmailAndPassword(auth, email, password);
+
+    // Send verification email
+    await sendEmailVerification(userCred.user);
+    authMsg.textContent = "✅ Verification email sent! Please check your inbox.";
+    await signOut(auth); // Sign out until verified
+  } catch (err) {
+    authMsg.textContent = "Sign up error: " + err.message;
   }
 });
 
-// --- Login ---
+// --- LOGIN with verification check ---
 loginBtn.addEventListener("click", async () => {
-  const email = emailInput.value.trim();
-  const password = passwordInput.value;
-
-  if (!isValidEmail(email)) return authMsg.textContent = "Invalid email format!";
-  if (!password) return authMsg.textContent = "Password cannot be empty";
-
   try {
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    if (!isValidEmail(email)) {
+      authMsg.textContent = "❌ Invalid email format.";
+      return;
+    }
+
     authMsg.textContent = "Signing in...";
-    await signInWithEmailAndPassword(auth, email, password);
+    const userCred = await signInWithEmailAndPassword(auth, email, password);
+
+    if (!userCred.user.emailVerified) {
+      authMsg.textContent = "⚠️ Please verify your email first.";
+      await signOut(auth);
+      return;
+    }
+
     authMsg.textContent = "";
-  } catch (err) { 
-    authMsg.textContent = "Sign in error: " + err.message; 
+  } catch (err) {
+    authMsg.textContent = "Sign in error: " + err.message;
   }
 });
 
-// --- Logout ---
-logoutBtn.addEventListener("click", async () => { 
-  await signOut(auth); 
+// --- LOGOUT ---
+logoutBtn.addEventListener("click", async () => {
+  await signOut(auth);
 });
 
-// --- Auth state listener ---
+// --- AUTH STATE CHANGE ---
 onAuthStateChanged(auth, (user) => {
-  if (user) {
+  if (user && user.emailVerified) {
     authContainer.style.display = "none";
     todoContainer.style.display = "block";
     loadTasks(user.uid);
+
     if (Notification.permission !== "granted") Notification.requestPermission();
   } else {
     authContainer.style.display = "block";
@@ -100,11 +135,12 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-// --- Add Task ---
+// --- ADD TASK ---
 addTaskBtn.addEventListener("click", async () => {
   const title = taskInput.value.trim();
   const desc = taskDesc.value.trim();
   const date = taskDeadline.value;
+
   if (!title || !date) return alert("Title and date required");
   if (!auth.currentUser) return alert("Not signed in");
 
@@ -118,25 +154,21 @@ addTaskBtn.addEventListener("click", async () => {
       reminderSent: false
     });
 
-    // Show task immediately
-    appendTaskToUI({
-      id: docRef.id,
-      task: title,
-      description: desc,
-      deadline: date
-    });
-
     taskInput.value = "";
     taskDesc.value = "";
     taskDeadline.value = "";
 
-    // Trigger immediate email reminder
-    const sendImmediateReminder = httpsCallable(functions, 'sendImmediateReminder');
+    // Immediate display handled by snapshot listener
+
+    // Optional: trigger immediate email reminder
+    const sendImmediateReminder = httpsCallable(functions, "sendImmediateReminder");
     sendImmediateReminder({ taskId: docRef.id }).catch(console.error);
-  } catch (err) { alert("Add task error: " + err.message); }
+  } catch (err) {
+    alert("Add task error: " + err.message);
+  }
 });
 
-// --- Append task to UI ---
+// --- APPEND TASK TO UI ---
 function appendTaskToUI(d) {
   const li = document.createElement("li");
   li.className = "task-item";
@@ -146,12 +178,12 @@ function appendTaskToUI(d) {
       <em>${d.description || "No description"}</em>
     </div>
     <div class="btn-group">
-      <button class="edit-btn">Edit</button>
-      <button class="delete-btn">Delete</button>
+      <button class="edit-btn">✏️ Edit</button>
+      <button class="delete-btn">🗑️ Delete</button>
     </div>
   `;
 
-  // DELETE TASK
+  // DELETE
   li.querySelector(".delete-btn").addEventListener("click", async () => {
     if (confirm("Delete this task?")) {
       await deleteDoc(doc(db, "tasks", d.id));
@@ -159,7 +191,7 @@ function appendTaskToUI(d) {
     }
   });
 
-  // EDIT TASK
+  // EDIT
   li.querySelector(".edit-btn").addEventListener("click", async () => {
     const newTitle = prompt("Update task title:", d.task);
     const newDesc = prompt("Update description:", d.description);
@@ -174,36 +206,37 @@ function appendTaskToUI(d) {
         updatedAt: serverTimestamp()
       });
 
+      // Immediate UI update
       li.querySelector("strong").textContent = newTitle;
       li.querySelector("em").textContent = newDesc || "No description";
-      li.querySelector("div").innerHTML = `<strong>${newTitle}</strong> (Deadline: ${newDate})<br><em>${newDesc || "No description"}</em>`;
+      li.querySelector("div").innerHTML = `
+        <strong>${newTitle}</strong> (Deadline: ${newDate})<br>
+        <em>${newDesc || "No description"}</em>
+      `;
 
-      // Trigger immediate reminder
-      const sendImmediateReminder = httpsCallable(functions, 'sendImmediateReminder');
+      // Send immediate reminder
+      const sendImmediateReminder = httpsCallable(functions, "sendImmediateReminder");
       sendImmediateReminder({ taskId: d.id }).catch(console.error);
     }
   });
 
-  taskList.prepend(li);
+  taskList.appendChild(li);
 
-  // Browser notification
-  if (d.deadline) {
-    const deadlineDate = new Date(d.deadline + "T00:00:00");
-    const now = new Date();
-    const diff = (deadlineDate - now)/(1000*60*60*24);
-    if (diff <= 1 && diff >= 0 && Notification.permission === "granted") {
-      new Notification("Reminder: " + d.task, { body: `Due ${d.deadline}` });
-    }
+  // Browser notification (optional)
+  const deadlineDate = new Date(d.deadline + "T00:00:00");
+  const now = new Date();
+  const diff = (deadlineDate - now) / (1000 * 60 * 60 * 24);
+  if (diff <= 1 && diff >= 0 && Notification.permission === "granted") {
+    new Notification("Reminder: " + d.task, { body: `Due ${d.deadline}` });
   }
 }
 
-// --- Load Tasks (real-time) ---
+// --- LOAD TASKS (real-time updates) ---
 function loadTasks(uid) {
-  taskList.innerHTML = "";
   const q = query(collection(db, "tasks"), where("uid", "==", uid), orderBy("createdAt", "desc"));
   onSnapshot(q, (snapshot) => {
     taskList.innerHTML = "";
-    snapshot.forEach(docSnap => {
+    snapshot.forEach((docSnap) => {
       const d = docSnap.data();
       d.id = docSnap.id;
       appendTaskToUI(d);
