@@ -1,72 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SmartToDo</title>
-
-  <!-- styles -->
-  <link rel="stylesheet" href="style.css" />
-
-  <!-- main script (module) -->
-  <script type="module" src="script.js" defer></script>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="wrap">
-    <!-- HERO / Welcome -->
-    <section id="hero" class="card hero">
+  <div class="wrap">
+
+    <!-- HERO -->
+    <div class="hero card">
       <div class="hero-left">
         <h1>SmartToDo</h1>
-        <p class="lead">Plan your day. Get reminders by email (verified) or SMS (phone).</p>
-        <p>Sign in or sign up below to start adding tasks.</p>
+        <p class="lead">Manage your tasks efficiently with reminders!</p>
       </div>
       <div class="hero-right">
-        <!-- optional hero image -->
-        <img src="https://raw.githubusercontent.com/umesh-197/SmartToDo/main/assets/hero.png"
-             alt="todo hero" class="hero-img" />
+        <img class="hero-img" src="https://img.icons8.com/ios/200/000000/todo-list.png" alt="Todo">
       </div>
-    </section>
+    </div>
 
     <!-- AUTH -->
-    <section id="auth-container" class="card auth">
-      <h2>Login or Sign Up</h2>
-
-      <div class="form-row">
-        <input type="email" id="email" placeholder="Email" autocomplete="username" />
-        <input type="password" id="password" placeholder="Password" autocomplete="current-password" />
-      </div>
-
+    <div id="auth-container" class="card auth">
+      <input type="email" id="email" placeholder="Email">
+      <input type="password" id="password" placeholder="Password">
       <div class="btn-row">
         <button id="signup-btn" class="btn">Sign Up</button>
-        <button id="login-btn" class="btn neutral">Login</button>
+        <button id="login-btn" class="btn">Login</button>
       </div>
 
-      <hr />
-
-      <h3>Or sign in with phone</h3>
-      <div class="form-row">
-        <input type="text" id="phone-number" placeholder="+91XXXXXXXXXX" />
-        <div id="recaptcha-container"></div>
-      </div>
+      <p>Or login with phone:</p>
+      <input type="tel" id="phone-number" placeholder="+91XXXXXXXXXX">
       <div class="btn-row">
         <button id="send-otp-btn" class="btn">Send OTP</button>
-        <input type="text" id="otp" placeholder="Enter OTP" />
-        <button id="verify-otp-btn" class="btn neutral">Verify OTP</button>
+        <button id="verify-otp-btn" class="btn">Verify OTP</button>
       </div>
 
+      <div id="recaptcha-container"></div>
       <p id="auth-msg" class="muted"></p>
-    </section>
+    </div>
 
-    <!-- TODO DASHBOARD -->
-    <section id="todo-container" class="card todo" style="display:none;">
+    <!-- TODO -->
+    <div id="todo-container" class="card" style="display:none;">
       <div class="todo-header">
-        <div>
-          <h2 id="welcome-user">Your Tasks</h2>
-          <p id="user-contact" class="muted"></p>
-        </div>
-        <div class="top-actions">
-          <button id="logout-btn" class="btn danger">Logout</button>
-        </div>
+        <h2 id="welcome-user">Your Tasks</h2>
+        <p id="user-contact"></p>
+        <button id="logout-btn" class="btn neutral">Logout</button>
       </div>
 
       <div class="task-form">
+        <input type="text" id="task-input" placeholder="Task title">
+        <textarea id="task-desc" placeholder="Task description"></textarea>
+        <div class="row">
+          <input type="date" id="task-deadline">
+          <input type="time" id="task-time">
+        </div>
+        <button id="add-task-btn" class="btn">Add Task</button>
+      </div>
+
+      <ul id="task-list" class="task-list"></ul>
+    </div>
+
+    <!-- EDIT MODAL -->
+    <dialog id="edit-modal" class="card">
+      <h3>Edit Task</h3>
+      <input type="text" id="edit-title" placeholder="Task title">
+      <textarea id="edit-desc" placeholder="Task description"></textarea>
+      <div class="row">
+        <input type="date" id="edit-deadline">
+        <input type="time" id="edit-time">
+      </div>
+      <div class="btn-row">
+        <button id="save-edit-btn" class="btn">Save</button>
+        <button id="cancel-edit-btn" class="btn neutral">Cancel</button>
+      </div>
+    </dialog>
+
+  </div>
+
+  <script type="module" src="firebase-config.js"></script>
+  <script type="module" src="script.js"></script>
+</body>
+</html>
