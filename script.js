@@ -1,31 +1,10 @@
-// --- Firebase Imports ---
+// --- Firebase imports ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics.js";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  RecaptchaVerifier,
-  signInWithPhoneNumber
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  serverTimestamp,
-  doc,
-  updateDoc,
-  deleteDoc
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-functions.js";
 
-// --- Firebase Config ---
+// --- Firebase config ---
 const firebaseConfig = {
   apiKey: "AIzaSyCdda9CT4-7gkwSKAreuu7kgtFyYaFSx5U",
   authDomain: "todolistweb-2433c.firebaseapp.com",
@@ -38,12 +17,11 @@ const firebaseConfig = {
 
 // --- Initialize Firebase ---
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app);
 
-// --- UI Elements ---
+// --- DOM Elements ---
 const authContainer = document.getElementById("auth-container");
 const todoContainer = document.getElementById("todo-container");
 const emailInput = document.getElementById("email");
@@ -58,24 +36,13 @@ const addTaskBtn = document.getElementById("add-task-btn");
 const taskList = document.getElementById("task-list");
 const authMsg = document.getElementById("auth-msg");
 
-// --- Email Auth ---
+// --- Email/Password Auth ---
 signupBtn.addEventListener("click", async () => {
-  const email = emailInput.value.trim();
-  const password = passwordInput.value.trim();
-
-  if (!email || !email.includes("@") || !email.includes(".")) {
-    authMsg.textContent = "Invalid email format.";
-    return;
-  }
-  if (password.length < 6) {
-    authMsg.textContent = "Password must be at least 6 characters.";
-    return;
-  }
-
   try {
+    if (!emailInput.value || !passwordInput.value) throw new Error("Enter email and password");
     authMsg.textContent = "Signing up...";
-    await createUserWithEmailAndPassword(auth, email, password);
-    authMsg.textContent = "";
+    await createUserWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+    authMsg.textContent = "Signup successful!";
   } catch (err) {
     authMsg.textContent = "Sign up error: " + err.message;
   }
@@ -83,60 +50,54 @@ signupBtn.addEventListener("click", async () => {
 
 loginBtn.addEventListener("click", async () => {
   try {
+    if (!emailInput.value || !passwordInput.value) throw new Error("Enter email and password");
     authMsg.textContent = "Signing in...";
     await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
-    authMsg.textContent = "";
+    authMsg.textContent = "Login successful!";
   } catch (err) {
     authMsg.textContent = "Sign in error: " + err.message;
   }
 });
 
-logoutBtn.addEventListener("click", async () => {
-  await signOut(auth);
-});
+logoutBtn.addEventListener("click", async () => await signOut(auth));
 
 // --- Phone Auth ---
-let recaptchaVerifier;
-let confirmationResult;
+window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "normal" });
 
-function setupRecaptcha() {
-  recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
-    size: "invisible",
-    callback: () => console.log("reCAPTCHA verified"),
-  });
-}
-setupRecaptcha();
+const phoneNumberInput = document.getElementById("phone-number");
+const sendOtpBtn = document.getElementById("send-otp-btn");
+const otpInput = document.getElementById("otp");
+const verifyOtpBtn = document.getElementById("verify-otp-btn");
 
-document.getElementById("send-otp-btn").addEventListener("click", async () => {
-  const phoneNumber = document.getElementById("phone").value.trim();
-  if (!phoneNumber.startsWith("+")) return alert("Please enter number like +919876543210");
+sendOtpBtn.addEventListener("click", async () => {
   try {
-    confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
-    alert("OTP sent! Please check your phone.");
-  } catch (error) {
-    alert("Error sending OTP: " + error.message);
+    const phoneNumber = phoneNumberInput.value;
+    if (!phoneNumber) return alert("Enter phone number with country code");
+    const appVerifier = window.recaptchaVerifier;
+    const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+    window.confirmationResult = confirmationResult;
+    alert("OTP sent to your phone!");
+  } catch (err) {
+    alert("OTP error: " + err.message);
   }
 });
 
-document.getElementById("verify-otp-btn").addEventListener("click", async () => {
-  const otp = document.getElementById("otp").value.trim();
-  if (!otp) return alert("Please enter the OTP");
+verifyOtpBtn.addEventListener("click", async () => {
   try {
-    const result = await confirmationResult.confirm(otp);
-    alert("✅ Phone verified & signed in!");
-    console.log(result.user);
-  } catch {
-    alert("❌ Incorrect OTP");
+    const otp = otpInput.value;
+    const result = await window.confirmationResult.confirm(otp);
+    alert("Phone login successful!");
+  } catch (err) {
+    alert("Invalid OTP: " + err.message);
   }
 });
 
-// --- Auth State Change ---
+// --- Auth State ---
 onAuthStateChanged(auth, (user) => {
   if (user) {
     authContainer.style.display = "none";
     todoContainer.style.display = "block";
     loadTasks(user.uid);
-    if (Notification.permission !== "granted") Notification.requestPermission();
   } else {
     authContainer.style.display = "block";
     todoContainer.style.display = "none";
@@ -162,56 +123,15 @@ addTaskBtn.addEventListener("click", async () => {
       reminderSent: false
     });
 
-    appendTaskToUI({ id: docRef.id, task: title, description: desc, deadline: date });
-    taskInput.value = ""; taskDesc.value = ""; taskDeadline.value = "";
+    taskInput.value = "";
+    taskDesc.value = "";
+    taskDeadline.value = "";
   } catch (err) {
     alert("Add task error: " + err.message);
   }
 });
 
-// --- Append Task to UI ---
-function appendTaskToUI(d) {
-  const li = document.createElement("li");
-  li.className = "task-item";
-  li.innerHTML = `
-    <div>
-      <strong>${d.task}</strong> (Deadline: ${d.deadline})<br>
-      <em>${d.description ? d.description : "No description"}</em>
-    </div>
-    <div class="btn-group">
-      <button class="edit-btn">Edit</button>
-      <button class="delete-btn">Delete</button>
-    </div>
-  `;
-
-  li.querySelector(".delete-btn").addEventListener("click", async () => {
-    if (confirm("Delete this task?")) {
-      await deleteDoc(doc(db, "tasks", d.id));
-      li.remove();
-    }
-  });
-
-  li.querySelector(".edit-btn").addEventListener("click", async () => {
-    const newTitle = prompt("Update task title:", d.task);
-    const newDesc = prompt("Update description:", d.description);
-    const newDate = prompt("Update deadline (YYYY-MM-DD):", d.deadline);
-
-    if (newTitle && newDate) {
-      await updateDoc(doc(db, "tasks", d.id), {
-        task: newTitle,
-        description: newDesc,
-        deadline: newDate,
-        updatedAt: serverTimestamp()
-      });
-      li.querySelector("strong").textContent = newTitle;
-      li.querySelector("em").textContent = newDesc || "No description";
-    }
-  });
-
-  taskList.prepend(li);
-}
-
-// --- Real-time Task Loading ---
+// --- Load Tasks ---
 function loadTasks(uid) {
   taskList.innerHTML = "";
   const q = query(collection(db, "tasks"), where("uid", "==", uid), orderBy("createdAt", "desc"));
@@ -219,8 +139,12 @@ function loadTasks(uid) {
     taskList.innerHTML = "";
     snapshot.forEach(docSnap => {
       const d = docSnap.data();
-      d.id = docSnap.id;
-      appendTaskToUI(d);
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <strong>${d.task}</strong> (Deadline: ${d.deadline})<br>
+        <em>${d.description}</em>
+      `;
+      taskList.appendChild(li);
     });
   });
 }
