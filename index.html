@@ -2,52 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Smart To-Do</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-    #auth-container, #todo-container { max-width: 400px; margin: auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    input, button { width: 100%; padding: 10px; margin: 6px 0; border-radius: 5px; border: 1px solid #ccc; }
-    button { background: #007bff; color: white; cursor: pointer; border: none; }
-    button:hover { background: #0056b3; }
-    ul { list-style: none; padding: 0; }
-    li.task-item { background: #eef; margin: 10px 0; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
-    .btn-group button { width: auto; margin-left: 5px; background: #ff4444; }
-    .btn-group .edit-btn { background: #28a745; }
-  </style>
+  <title>SmartToDo</title>
+  <script type="module" src="functions.js" defer></script>
 </head>
 <body>
-
-  <!-- Authentication Container -->
   <div id="auth-container">
-    <h2>Smart To-Do Login</h2>
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Password">
+    <h2>Login or Sign Up</h2>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
     <button id="signup-btn">Sign Up</button>
     <button id="login-btn">Login</button>
 
-    <h3>Or</h3>
-    <h3>📱 Phone Sign-In</h3>
-    <input type="text" id="phone" placeholder="+91xxxxxxxxxx">
-    <button id="send-otp-btn">Send OTP</button>
-    <input type="text" id="otp" placeholder="Enter OTP">
-    <button id="verify-otp-btn">Verify OTP</button>
+    <h3>Or sign in with phone</h3>
+    <input type="text" id="phone-number" placeholder="+91XXXXXXXXXX" />
     <div id="recaptcha-container"></div>
+    <button id="send-otp-btn">Send OTP</button>
+    <input type="text" id="otp" placeholder="Enter OTP" />
+    <button id="verify-otp-btn">Verify OTP</button>
 
-    <p id="auth-msg" style="color:red;"></p>
+    <p id="auth-msg"></p>
   </div>
 
-  <!-- To-Do Container -->
   <div id="todo-container" style="display:none;">
-    <h2>Your To-Do List</h2>
-    <input type="text" id="task-input" placeholder="Task title">
-    <textarea id="task-desc" placeholder="Task description"></textarea>
-    <input type="date" id="task-deadline">
+    <button id="logout-btn">Logout</button>
+    <h2>Your Tasks</h2>
+    <input id="task-input" placeholder="Task title" />
+    <input id="task-desc" placeholder="Description" />
+    <input id="task-deadline" type="date" />
     <button id="add-task-btn">Add Task</button>
-    <button id="logout-btn" style="background:#ff4444;">Logout</button>
     <ul id="task-list"></ul>
   </div>
-
-  <script type="module" src="function.js"></script>
 </body>
 </html>
