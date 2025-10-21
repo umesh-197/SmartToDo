@@ -1,36 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>SmartToDo</title>
-  <script type="module" src="functions.js" defer></script>
+
+  <!-- styles -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- main script (module) -->
+  <script type="module" src="script.js" defer></script>
 </head>
 <body>
-  <div id="auth-container">
-    <h2>Login or Sign Up</h2>
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
-    <button id="signup-btn">Sign Up</button>
-    <button id="login-btn">Login</button>
+  <main class="wrap">
+    <!-- HERO / Welcome -->
+    <section id="hero" class="card hero">
+      <div class="hero-left">
+        <h1>SmartToDo</h1>
+        <p class="lead">Plan your day. Get reminders by email (verified) or SMS (phone).</p>
+        <p>Sign in or sign up below to start adding tasks.</p>
+      </div>
+      <div class="hero-right">
+        <!-- optional hero image -->
+        <img src="https://raw.githubusercontent.com/umesh-197/SmartToDo/main/assets/hero.png"
+             alt="todo hero" class="hero-img" />
+      </div>
+    </section>
 
-    <h3>Or sign in with phone</h3>
-    <input type="text" id="phone-number" placeholder="+91XXXXXXXXXX" />
-    <div id="recaptcha-container"></div>
-    <button id="send-otp-btn">Send OTP</button>
-    <input type="text" id="otp" placeholder="Enter OTP" />
-    <button id="verify-otp-btn">Verify OTP</button>
+    <!-- AUTH -->
+    <section id="auth-container" class="card auth">
+      <h2>Login or Sign Up</h2>
 
-    <p id="auth-msg"></p>
-  </div>
+      <div class="form-row">
+        <input type="email" id="email" placeholder="Email" autocomplete="username" />
+        <input type="password" id="password" placeholder="Password" autocomplete="current-password" />
+      </div>
 
-  <div id="todo-container" style="display:none;">
-    <button id="logout-btn">Logout</button>
-    <h2>Your Tasks</h2>
-    <input id="task-input" placeholder="Task title" />
-    <input id="task-desc" placeholder="Description" />
-    <input id="task-deadline" type="date" />
-    <button id="add-task-btn">Add Task</button>
-    <ul id="task-list"></ul>
-  </div>
-</body>
-</html>
+      <div class="btn-row">
+        <button id="signup-btn" class="btn">Sign Up</button>
+        <button id="login-btn" class="btn neutral">Login</button>
+      </div>
+
+      <hr />
+
+      <h3>Or sign in with phone</h3>
+      <div class="form-row">
+        <input type="text" id="phone-number" placeholder="+91XXXXXXXXXX" />
+        <div id="recaptcha-container"></div>
+      </div>
+      <div class="btn-row">
+        <button id="send-otp-btn" class="btn">Send OTP</button>
+        <input type="text" id="otp" placeholder="Enter OTP" />
+        <button id="verify-otp-btn" class="btn neutral">Verify OTP</button>
+      </div>
+
+      <p id="auth-msg" class="muted"></p>
+    </section>
+
+    <!-- TODO DASHBOARD -->
+    <section id="todo-container" class="card todo" style="display:none;">
+      <div class="todo-header">
+        <div>
+          <h2 id="welcome-user">Your Tasks</h2>
+          <p id="user-contact" class="muted"></p>
+        </div>
+        <div class="top-actions">
+          <button id="logout-btn" class="btn danger">Logout</button>
+        </div>
+      </div>
+
+      <div class="task-form">
