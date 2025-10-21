@@ -19,13 +19,12 @@ import {
   serverTimestamp,
   doc,
   updateDoc,
-  deleteDoc,
-  getDoc
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-functions.js";
 
-/* DOM */
+/* DOM Elements */
 const authContainer = document.getElementById("auth-container");
 const todoContainer = document.getElementById("todo-container");
 const emailInput = document.getElementById("email");
@@ -60,7 +59,7 @@ let currentUser = null;
 let unsubscribeTasks = null;
 let currentEditDocId = null;
 
-/* Recaptcha (invisible) */
+/* Recaptcha */
 window.recaptchaVerifier = new RecaptchaVerifier('recaptcha-container', { size: 'invisible' }, auth);
 
 /* EMAIL SIGNUP */
@@ -71,7 +70,7 @@ signupBtn.addEventListener("click", async () => {
     if (!email || !pass) throw new Error("Enter email and password");
     authMsg.textContent = "Signing up...";
     await createUserWithEmailAndPassword(auth, email, pass);
-    authMsg.textContent = "Signup successful! (You can verify your email from Firebase Auth console or implement sendEmailVerification later.)";
+    authMsg.textContent = "Signup successful!";
   } catch (err) {
     authMsg.textContent = "Sign up error: " + err.message;
   }
@@ -97,21 +96,20 @@ logoutBtn.addEventListener("click", async () => {
   await signOut(auth);
 });
 
-/* PHONE AUTH - SEND OTP */
+/* PHONE AUTH */
 sendOtpBtn.addEventListener("click", async () => {
+  const phoneNumber = phoneNumberInput.value.trim();
+  if (!phoneNumber) return alert("Enter phone number with country code");
   try {
-    const phoneNumber = phoneNumberInput.value.trim();
-    if (!phoneNumber) return alert("Enter phone number with country code");
     const appVerifier = window.recaptchaVerifier;
     const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
     window.confirmationResult = confirmationResult;
-    alert("OTP sent to your phone!");
+    alert("OTP sent!");
   } catch (err) {
     alert("OTP error: " + err.message);
   }
 });
 
-/* PHONE AUTH - VERIFY OTP */
 verifyOtpBtn.addEventListener("click", async () => {
   try {
     const otp = otpInput.value.trim();
@@ -123,7 +121,7 @@ verifyOtpBtn.addEventListener("click", async () => {
   }
 });
 
-/* AUTH STATE CHANGES */
+/* AUTH STATE */
 onAuthStateChanged(auth, user => {
   currentUser = user;
   if (user) {
@@ -144,14 +142,13 @@ onAuthStateChanged(auth, user => {
 
 /* ADD TASK */
 addTaskBtn.addEventListener("click", async () => {
+  if (!currentUser) return alert("Not signed in");
   const title = taskInput.value.trim();
   const desc = taskDesc.value.trim();
   const date = taskDeadline.value;
   const time = taskTime.value || "00:00";
   if (!title || !date) return alert("Title and date required");
-  if (!currentUser) return alert("Not signed in");
 
-  // build deadline ISO (local)
   const deadlineISO = new Date(`${date}T${time}:00`).toISOString();
 
   try {
@@ -167,45 +164,36 @@ addTaskBtn.addEventListener("click", async () => {
       emailVerified: !!currentUser.emailVerified
     });
 
-    // clear inputs
     taskInput.value = "";
     taskDesc.value = "";
     taskDeadline.value = "";
     taskTime.value = "";
 
-    // call immediate reminder function (it will only send if within 24h AND user verified/phone)
-    try {
-      const sendImmediateReminder = httpsCallable(functions, 'sendImmediateReminder');
-      await sendImmediateReminder({ taskId: docRef.id });
-    } catch (fnErr) {
-      console.warn("Immediate reminder call failed:", fnErr);
-    }
+    const sendImmediateReminder = httpsCallable(functions, 'sendImmediateReminder');
+    await sendImmediateReminder({ taskId: docRef.id });
 
   } catch (err) {
     alert("Add task error: " + err.message);
   }
 });
 
-/* LOAD TASKS (REALTIME) */
+/* LOAD TASKS */
 function loadTasks(uid) {
   if (unsubscribeTasks) unsubscribeTasks();
   const q = query(collection(db, "tasks"), where("uid", "==", uid), orderBy("createdAt", "desc"));
-  unsubscribeTasks = onSnapshot(q, (snapshot) => {
+  unsubscribeTasks = onSnapshot(q, snapshot => {
     taskList.innerHTML = "";
     snapshot.forEach(docSnap => {
-      const d = docSnap.data();
-      const li = renderTaskItem(docSnap.id, d);
+      const li = renderTaskItem(docSnap.id, docSnap.data());
       taskList.appendChild(li);
     });
-  }, err => {
-    console.error("Tasks snapshot error:", err);
   });
 }
 
 /* RENDER TASK ITEM */
 function renderTaskItem(id, d) {
   const li = document.createElement("li");
-  li.className = "task-item" + (shouldHighlightReminder(d.deadline) ? " reminder" : "");
+  li.className = "task-item";
   const left = document.createElement("div");
   left.className = "task-left";
   const title = document.createElement("strong");
@@ -213,7 +201,7 @@ function renderTaskItem(id, d) {
   const meta = document.createElement("div");
   meta.className = "task-meta";
   const dd = new Date(d.deadline);
-  meta.textContent = `Due: ${dd.toLocaleDateString()} ${dd.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+  meta.textContent = `Due: ${dd.toLocaleDateString()} ${dd.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
   const desc = document.createElement("div");
   desc.textContent = d.description || "";
 
@@ -223,38 +211,22 @@ function renderTaskItem(id, d) {
 
   const actions = document.createElement("div");
   actions.className = "task-actions";
-
   const editBtn = document.createElement("button");
   editBtn.textContent = "Edit";
   editBtn.className = "small-btn edit";
   editBtn.addEventListener("click", () => openEditModal(id, d));
-
   const delBtn = document.createElement("button");
   delBtn.textContent = "Delete";
   delBtn.className = "small-btn delete";
   delBtn.addEventListener("click", async () => {
-    if (confirm("Delete this task?")) {
-      await deleteDoc(doc(db, "tasks", id));
-    }
+    if (confirm("Delete this task?")) await deleteDoc(doc(db, "tasks", id));
   });
-
   actions.appendChild(editBtn);
   actions.appendChild(delBtn);
 
   li.appendChild(left);
   li.appendChild(actions);
-
   return li;
-}
-
-/* highlight if due within 24h */
-function shouldHighlightReminder(deadlineIso) {
-  try {
-    const dl = new Date(deadlineIso);
-    const now = new Date();
-    const diff = dl - now;
-    return diff >= 0 && diff <= (24*60*60*1000);
-  } catch { return false; }
 }
 
 /* EDIT MODAL */
@@ -265,7 +237,7 @@ function openEditModal(id, data) {
   const dd = new Date(data.deadline);
   editDeadline.value = dd.toISOString().slice(0,10);
   editTime.value = dd.toTimeString().slice(0,5);
-  editModal.showModal();
+  if (editModal.showModal) editModal.showModal();
 }
 
 saveEditBtn.addEventListener("click", async () => {
@@ -282,22 +254,17 @@ saveEditBtn.addEventListener("click", async () => {
     task: title,
     description: desc,
     deadline: deadlineISO,
-    reminderSent: false // reset so function may resend if needed
+    reminderSent: false
   });
 
-  try {
-    const sendImmediateReminder = httpsCallable(functions, 'sendImmediateReminder');
-    await sendImmediateReminder({ taskId: currentEditDocId });
-  } catch (e) {
-    console.warn("Immediate reminder failed", e);
-  }
+  const sendImmediateReminder = httpsCallable(functions, 'sendImmediateReminder');
+  await sendImmediateReminder({ taskId: currentEditDocId });
 
-  editModal.close();
+  if (editModal.close) editModal.close();
   currentEditDocId = null;
 });
 
 cancelEditBtn.addEventListener("click", () => {
-  editModal.close();
+  if (editModal.close) editModal.close();
   currentEditDocId = null;
 });
-
