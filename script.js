@@ -1,4 +1,4 @@
-// --- Firebase imports ---
+// --- Firebase Imports ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics.js";
 import {
@@ -7,7 +7,8 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  sendEmailVerification
+  RecaptchaVerifier,
+  signInWithPhoneNumber
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 import {
   getFirestore,
@@ -24,7 +25,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-functions.js";
 
-// --- Firebase config ---
+// --- Firebase Config ---
 const firebaseConfig = {
   apiKey: "AIzaSyCdda9CT4-7gkwSKAreuu7kgtFyYaFSx5U",
   authDomain: "todolistweb-2433c.firebaseapp.com",
@@ -42,7 +43,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app);
 
-// --- UI elements ---
+// --- UI Elements ---
 const authContainer = document.getElementById("auth-container");
 const todoContainer = document.getElementById("todo-container");
 const emailInput = document.getElementById("email");
@@ -57,76 +58,84 @@ const addTaskBtn = document.getElementById("add-task-btn");
 const taskList = document.getElementById("task-list");
 const authMsg = document.getElementById("auth-msg");
 
-// --- Email validation helper ---
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-// --- SIGN UP with email verification ---
+// --- Email Auth ---
 signupBtn.addEventListener("click", async () => {
+  const email = emailInput.value.trim();
+  const password = passwordInput.value.trim();
+
+  if (!email || !email.includes("@") || !email.includes(".")) {
+    authMsg.textContent = "Invalid email format.";
+    return;
+  }
+  if (password.length < 6) {
+    authMsg.textContent = "Password must be at least 6 characters.";
+    return;
+  }
+
   try {
-    const email = emailInput.value.trim();
-    const password = passwordInput.value.trim();
-
-    if (!isValidEmail(email)) {
-      authMsg.textContent = "❌ Please enter a valid email address.";
-      return;
-    }
-    if (password.length < 6) {
-      authMsg.textContent = "⚠️ Password must be at least 6 characters.";
-      return;
-    }
-
     authMsg.textContent = "Signing up...";
-    const userCred = await createUserWithEmailAndPassword(auth, email, password);
-
-    // Send verification email
-    await sendEmailVerification(userCred.user);
-    authMsg.textContent = "✅ Verification email sent! Please check your inbox.";
-    await signOut(auth); // Sign out until verified
+    await createUserWithEmailAndPassword(auth, email, password);
+    authMsg.textContent = "";
   } catch (err) {
     authMsg.textContent = "Sign up error: " + err.message;
   }
 });
 
-// --- LOGIN with verification check ---
 loginBtn.addEventListener("click", async () => {
   try {
-    const email = emailInput.value.trim();
-    const password = passwordInput.value.trim();
-
-    if (!isValidEmail(email)) {
-      authMsg.textContent = "❌ Invalid email format.";
-      return;
-    }
-
     authMsg.textContent = "Signing in...";
-    const userCred = await signInWithEmailAndPassword(auth, email, password);
-
-    if (!userCred.user.emailVerified) {
-      authMsg.textContent = "⚠️ Please verify your email first.";
-      await signOut(auth);
-      return;
-    }
-
+    await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
     authMsg.textContent = "";
   } catch (err) {
     authMsg.textContent = "Sign in error: " + err.message;
   }
 });
 
-// --- LOGOUT ---
 logoutBtn.addEventListener("click", async () => {
   await signOut(auth);
 });
 
-// --- AUTH STATE CHANGE ---
+// --- Phone Auth ---
+let recaptchaVerifier;
+let confirmationResult;
+
+function setupRecaptcha() {
+  recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+    size: "invisible",
+    callback: () => console.log("reCAPTCHA verified"),
+  });
+}
+setupRecaptcha();
+
+document.getElementById("send-otp-btn").addEventListener("click", async () => {
+  const phoneNumber = document.getElementById("phone").value.trim();
+  if (!phoneNumber.startsWith("+")) return alert("Please enter number like +919876543210");
+  try {
+    confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
+    alert("OTP sent! Please check your phone.");
+  } catch (error) {
+    alert("Error sending OTP: " + error.message);
+  }
+});
+
+document.getElementById("verify-otp-btn").addEventListener("click", async () => {
+  const otp = document.getElementById("otp").value.trim();
+  if (!otp) return alert("Please enter the OTP");
+  try {
+    const result = await confirmationResult.confirm(otp);
+    alert("✅ Phone verified & signed in!");
+    console.log(result.user);
+  } catch {
+    alert("❌ Incorrect OTP");
+  }
+});
+
+// --- Auth State Change ---
 onAuthStateChanged(auth, (user) => {
-  if (user && user.emailVerified) {
+  if (user) {
     authContainer.style.display = "none";
     todoContainer.style.display = "block";
     loadTasks(user.uid);
-
     if (Notification.permission !== "granted") Notification.requestPermission();
   } else {
     authContainer.style.display = "block";
@@ -135,12 +144,11 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-// --- ADD TASK ---
+// --- Add Task ---
 addTaskBtn.addEventListener("click", async () => {
   const title = taskInput.value.trim();
   const desc = taskDesc.value.trim();
   const date = taskDeadline.value;
-
   if (!title || !date) return alert("Title and date required");
   if (!auth.currentUser) return alert("Not signed in");
 
@@ -154,36 +162,28 @@ addTaskBtn.addEventListener("click", async () => {
       reminderSent: false
     });
 
-    taskInput.value = "";
-    taskDesc.value = "";
-    taskDeadline.value = "";
-
-    // Immediate display handled by snapshot listener
-
-    // Optional: trigger immediate email reminder
-    const sendImmediateReminder = httpsCallable(functions, "sendImmediateReminder");
-    sendImmediateReminder({ taskId: docRef.id }).catch(console.error);
+    appendTaskToUI({ id: docRef.id, task: title, description: desc, deadline: date });
+    taskInput.value = ""; taskDesc.value = ""; taskDeadline.value = "";
   } catch (err) {
     alert("Add task error: " + err.message);
   }
 });
 
-// --- APPEND TASK TO UI ---
+// --- Append Task to UI ---
 function appendTaskToUI(d) {
   const li = document.createElement("li");
   li.className = "task-item";
   li.innerHTML = `
     <div>
       <strong>${d.task}</strong> (Deadline: ${d.deadline})<br>
-      <em>${d.description || "No description"}</em>
+      <em>${d.description ? d.description : "No description"}</em>
     </div>
     <div class="btn-group">
-      <button class="edit-btn">✏️ Edit</button>
-      <button class="delete-btn">🗑️ Delete</button>
+      <button class="edit-btn">Edit</button>
+      <button class="delete-btn">Delete</button>
     </div>
   `;
 
-  // DELETE
   li.querySelector(".delete-btn").addEventListener("click", async () => {
     if (confirm("Delete this task?")) {
       await deleteDoc(doc(db, "tasks", d.id));
@@ -191,7 +191,6 @@ function appendTaskToUI(d) {
     }
   });
 
-  // EDIT
   li.querySelector(".edit-btn").addEventListener("click", async () => {
     const newTitle = prompt("Update task title:", d.task);
     const newDesc = prompt("Update description:", d.description);
@@ -202,41 +201,23 @@ function appendTaskToUI(d) {
         task: newTitle,
         description: newDesc,
         deadline: newDate,
-        reminderSent: false,
         updatedAt: serverTimestamp()
       });
-
-      // Immediate UI update
       li.querySelector("strong").textContent = newTitle;
       li.querySelector("em").textContent = newDesc || "No description";
-      li.querySelector("div").innerHTML = `
-        <strong>${newTitle}</strong> (Deadline: ${newDate})<br>
-        <em>${newDesc || "No description"}</em>
-      `;
-
-      // Send immediate reminder
-      const sendImmediateReminder = httpsCallable(functions, "sendImmediateReminder");
-      sendImmediateReminder({ taskId: d.id }).catch(console.error);
     }
   });
 
-  taskList.appendChild(li);
-
-  // Browser notification (optional)
-  const deadlineDate = new Date(d.deadline + "T00:00:00");
-  const now = new Date();
-  const diff = (deadlineDate - now) / (1000 * 60 * 60 * 24);
-  if (diff <= 1 && diff >= 0 && Notification.permission === "granted") {
-    new Notification("Reminder: " + d.task, { body: `Due ${d.deadline}` });
-  }
+  taskList.prepend(li);
 }
 
-// --- LOAD TASKS (real-time updates) ---
+// --- Real-time Task Loading ---
 function loadTasks(uid) {
+  taskList.innerHTML = "";
   const q = query(collection(db, "tasks"), where("uid", "==", uid), orderBy("createdAt", "desc"));
   onSnapshot(q, (snapshot) => {
     taskList.innerHTML = "";
-    snapshot.forEach((docSnap) => {
+    snapshot.forEach(docSnap => {
       const d = docSnap.data();
       d.id = docSnap.id;
       appendTaskToUI(d);
