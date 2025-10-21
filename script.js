@@ -300,3 +300,4 @@ cancelEditBtn.addEventListener("click", () => {
   editModal.close();
   currentEditDocId = null;
 });
+
